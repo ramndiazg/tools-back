@@ -1,0 +1,23 @@
+##configurar el proyecto
+>go mod init tools-back
+
+##crear primeros esquemas con ent
+>go run -mod=mod entgo.io/ent/cmd/ent new User
+>go run -mod=mod entgo.io/ent/cmd/ent new Tool
+>go run -mod=mod entgo.io/ent/cmd/ent new Review
+
+##para imports rotos
+>go mod tidy
+
+##generar archivos ent
+>go generate ./...
+>go mod tidy
+
+##coneccion con postgress
+database: postgress
+user: admin
+password: 1234
+
+##verificar las tablas creadas
+psql -U admin -d tools-back -c "\dt"
+

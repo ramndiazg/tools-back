@@ -11,8 +11,6 @@ var (
 	// ReviewsColumns holds the columns for the "reviews" table.
 	ReviewsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "user_uuid", Type: field.TypeUUID},
-		{Name: "tool_uuid", Type: field.TypeUUID},
 		{Name: "rating", Type: field.TypeInt},
 		{Name: "comment", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
@@ -32,12 +30,21 @@ var (
 		{Name: "website", Type: field.TypeString},
 		{Name: "image_url", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "review_tool", Type: field.TypeUUID, Unique: true, Nullable: true},
 	}
 	// ToolsTable holds the schema information for the "tools" table.
 	ToolsTable = &schema.Table{
 		Name:       "tools",
 		Columns:    ToolsColumns,
 		PrimaryKey: []*schema.Column{ToolsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tools_reviews_tool",
+				Columns:    []*schema.Column{ToolsColumns[7]},
+				RefColumns: []*schema.Column{ReviewsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -47,12 +54,21 @@ var (
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "password_hash", Type: field.TypeString},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "review_user", Type: field.TypeUUID, Unique: true, Nullable: true},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_reviews_user",
+				Columns:    []*schema.Column{UsersColumns[6]},
+				RefColumns: []*schema.Column{ReviewsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
@@ -63,4 +79,6 @@ var (
 )
 
 func init() {
+	ToolsTable.ForeignKeys[0].RefTable = ReviewsTable
+	UsersTable.ForeignKeys[0].RefTable = ReviewsTable
 }

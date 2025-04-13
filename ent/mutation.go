@@ -38,13 +38,15 @@ type ReviewMutation struct {
 	op            Op
 	typ           string
 	id            *uuid.UUID
-	user_uuid     *uuid.UUID
-	tool_uuid     *uuid.UUID
 	rating        *int
 	addrating     *int
 	comment       *string
 	created_at    *time.Time
 	clearedFields map[string]struct{}
+	user          *uuid.UUID
+	cleareduser   bool
+	tool          *uuid.UUID
+	clearedtool   bool
 	done          bool
 	oldValue      func(context.Context) (*Review, error)
 	predicates    []predicate.Review
@@ -152,78 +154,6 @@ func (m *ReviewMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetUserUUID sets the "user_uuid" field.
-func (m *ReviewMutation) SetUserUUID(u uuid.UUID) {
-	m.user_uuid = &u
-}
-
-// UserUUID returns the value of the "user_uuid" field in the mutation.
-func (m *ReviewMutation) UserUUID() (r uuid.UUID, exists bool) {
-	v := m.user_uuid
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUserUUID returns the old "user_uuid" field's value of the Review entity.
-// If the Review object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ReviewMutation) OldUserUUID(ctx context.Context) (v uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUserUUID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUserUUID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUserUUID: %w", err)
-	}
-	return oldValue.UserUUID, nil
-}
-
-// ResetUserUUID resets all changes to the "user_uuid" field.
-func (m *ReviewMutation) ResetUserUUID() {
-	m.user_uuid = nil
-}
-
-// SetToolUUID sets the "tool_uuid" field.
-func (m *ReviewMutation) SetToolUUID(u uuid.UUID) {
-	m.tool_uuid = &u
-}
-
-// ToolUUID returns the value of the "tool_uuid" field in the mutation.
-func (m *ReviewMutation) ToolUUID() (r uuid.UUID, exists bool) {
-	v := m.tool_uuid
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldToolUUID returns the old "tool_uuid" field's value of the Review entity.
-// If the Review object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ReviewMutation) OldToolUUID(ctx context.Context) (v uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldToolUUID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldToolUUID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldToolUUID: %w", err)
-	}
-	return oldValue.ToolUUID, nil
-}
-
-// ResetToolUUID resets all changes to the "tool_uuid" field.
-func (m *ReviewMutation) ResetToolUUID() {
-	m.tool_uuid = nil
 }
 
 // SetRating sets the "rating" field.
@@ -354,6 +284,84 @@ func (m *ReviewMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *ReviewMutation) SetUserID(id uuid.UUID) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *ReviewMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *ReviewMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *ReviewMutation) UserID() (id uuid.UUID, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *ReviewMutation) UserIDs() (ids []uuid.UUID) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *ReviewMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// SetToolID sets the "tool" edge to the Tool entity by id.
+func (m *ReviewMutation) SetToolID(id uuid.UUID) {
+	m.tool = &id
+}
+
+// ClearTool clears the "tool" edge to the Tool entity.
+func (m *ReviewMutation) ClearTool() {
+	m.clearedtool = true
+}
+
+// ToolCleared reports if the "tool" edge to the Tool entity was cleared.
+func (m *ReviewMutation) ToolCleared() bool {
+	return m.clearedtool
+}
+
+// ToolID returns the "tool" edge ID in the mutation.
+func (m *ReviewMutation) ToolID() (id uuid.UUID, exists bool) {
+	if m.tool != nil {
+		return *m.tool, true
+	}
+	return
+}
+
+// ToolIDs returns the "tool" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ToolID instead. It exists only for internal usage by the builders.
+func (m *ReviewMutation) ToolIDs() (ids []uuid.UUID) {
+	if id := m.tool; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTool resets all changes to the "tool" edge.
+func (m *ReviewMutation) ResetTool() {
+	m.tool = nil
+	m.clearedtool = false
+}
+
 // Where appends a list predicates to the ReviewMutation builder.
 func (m *ReviewMutation) Where(ps ...predicate.Review) {
 	m.predicates = append(m.predicates, ps...)
@@ -388,13 +396,7 @@ func (m *ReviewMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ReviewMutation) Fields() []string {
-	fields := make([]string, 0, 5)
-	if m.user_uuid != nil {
-		fields = append(fields, review.FieldUserUUID)
-	}
-	if m.tool_uuid != nil {
-		fields = append(fields, review.FieldToolUUID)
-	}
+	fields := make([]string, 0, 3)
 	if m.rating != nil {
 		fields = append(fields, review.FieldRating)
 	}
@@ -412,10 +414,6 @@ func (m *ReviewMutation) Fields() []string {
 // schema.
 func (m *ReviewMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case review.FieldUserUUID:
-		return m.UserUUID()
-	case review.FieldToolUUID:
-		return m.ToolUUID()
 	case review.FieldRating:
 		return m.Rating()
 	case review.FieldComment:
@@ -431,10 +429,6 @@ func (m *ReviewMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *ReviewMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case review.FieldUserUUID:
-		return m.OldUserUUID(ctx)
-	case review.FieldToolUUID:
-		return m.OldToolUUID(ctx)
 	case review.FieldRating:
 		return m.OldRating(ctx)
 	case review.FieldComment:
@@ -450,20 +444,6 @@ func (m *ReviewMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *ReviewMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case review.FieldUserUUID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUserUUID(v)
-		return nil
-	case review.FieldToolUUID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetToolUUID(v)
-		return nil
 	case review.FieldRating:
 		v, ok := value.(int)
 		if !ok {
@@ -549,12 +529,6 @@ func (m *ReviewMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *ReviewMutation) ResetField(name string) error {
 	switch name {
-	case review.FieldUserUUID:
-		m.ResetUserUUID()
-		return nil
-	case review.FieldToolUUID:
-		m.ResetToolUUID()
-		return nil
 	case review.FieldRating:
 		m.ResetRating()
 		return nil
@@ -570,19 +544,35 @@ func (m *ReviewMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ReviewMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.user != nil {
+		edges = append(edges, review.EdgeUser)
+	}
+	if m.tool != nil {
+		edges = append(edges, review.EdgeTool)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *ReviewMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case review.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case review.EdgeTool:
+		if id := m.tool; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ReviewMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
@@ -594,44 +584,74 @@ func (m *ReviewMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ReviewMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.cleareduser {
+		edges = append(edges, review.EdgeUser)
+	}
+	if m.clearedtool {
+		edges = append(edges, review.EdgeTool)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *ReviewMutation) EdgeCleared(name string) bool {
+	switch name {
+	case review.EdgeUser:
+		return m.cleareduser
+	case review.EdgeTool:
+		return m.clearedtool
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *ReviewMutation) ClearEdge(name string) error {
+	switch name {
+	case review.EdgeUser:
+		m.ClearUser()
+		return nil
+	case review.EdgeTool:
+		m.ClearTool()
+		return nil
+	}
 	return fmt.Errorf("unknown Review unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *ReviewMutation) ResetEdge(name string) error {
+	switch name {
+	case review.EdgeUser:
+		m.ResetUser()
+		return nil
+	case review.EdgeTool:
+		m.ResetTool()
+		return nil
+	}
 	return fmt.Errorf("unknown Review edge %s", name)
 }
 
 // ToolMutation represents an operation that mutates the Tool nodes in the graph.
 type ToolMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	name          *string
-	description   *string
-	category      *string
-	website       *string
-	image_url     *string
-	created_at    *time.Time
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Tool, error)
-	predicates    []predicate.Tool
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	name           *string
+	description    *string
+	category       *string
+	website        *string
+	image_url      *string
+	created_at     *time.Time
+	clearedFields  map[string]struct{}
+	reviews        *uuid.UUID
+	clearedreviews bool
+	done           bool
+	oldValue       func(context.Context) (*Tool, error)
+	predicates     []predicate.Tool
 }
 
 var _ ent.Mutation = (*ToolMutation)(nil)
@@ -954,6 +974,45 @@ func (m *ToolMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetReviewsID sets the "reviews" edge to the Review entity by id.
+func (m *ToolMutation) SetReviewsID(id uuid.UUID) {
+	m.reviews = &id
+}
+
+// ClearReviews clears the "reviews" edge to the Review entity.
+func (m *ToolMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the Review entity was cleared.
+func (m *ToolMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// ReviewsID returns the "reviews" edge ID in the mutation.
+func (m *ToolMutation) ReviewsID() (id uuid.UUID, exists bool) {
+	if m.reviews != nil {
+		return *m.reviews, true
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ReviewsID instead. It exists only for internal usage by the builders.
+func (m *ToolMutation) ReviewsIDs() (ids []uuid.UUID) {
+	if id := m.reviews; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *ToolMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+}
+
 // Where appends a list predicates to the ToolMutation builder.
 func (m *ToolMutation) Where(ps ...predicate.Tool) {
 	m.predicates = append(m.predicates, ps...)
@@ -1172,19 +1231,28 @@ func (m *ToolMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ToolMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.reviews != nil {
+		edges = append(edges, tool.EdgeReviews)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *ToolMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case tool.EdgeReviews:
+		if id := m.reviews; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ToolMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -1196,43 +1264,62 @@ func (m *ToolMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ToolMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedreviews {
+		edges = append(edges, tool.EdgeReviews)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *ToolMutation) EdgeCleared(name string) bool {
+	switch name {
+	case tool.EdgeReviews:
+		return m.clearedreviews
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *ToolMutation) ClearEdge(name string) error {
+	switch name {
+	case tool.EdgeReviews:
+		m.ClearReviews()
+		return nil
+	}
 	return fmt.Errorf("unknown Tool unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *ToolMutation) ResetEdge(name string) error {
+	switch name {
+	case tool.EdgeReviews:
+		m.ResetReviews()
+		return nil
+	}
 	return fmt.Errorf("unknown Tool edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	name          *string
-	username      *string
-	email         *string
-	password_hash *string
-	created_at    *time.Time
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*User, error)
-	predicates    []predicate.User
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	name           *string
+	username       *string
+	email          *string
+	password_hash  *string
+	created_at     *time.Time
+	clearedFields  map[string]struct{}
+	reviews        *uuid.UUID
+	clearedreviews bool
+	done           bool
+	oldValue       func(context.Context) (*User, error)
+	predicates     []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -1519,6 +1606,45 @@ func (m *UserMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetReviewsID sets the "reviews" edge to the Review entity by id.
+func (m *UserMutation) SetReviewsID(id uuid.UUID) {
+	m.reviews = &id
+}
+
+// ClearReviews clears the "reviews" edge to the Review entity.
+func (m *UserMutation) ClearReviews() {
+	m.clearedreviews = true
+}
+
+// ReviewsCleared reports if the "reviews" edge to the Review entity was cleared.
+func (m *UserMutation) ReviewsCleared() bool {
+	return m.clearedreviews
+}
+
+// ReviewsID returns the "reviews" edge ID in the mutation.
+func (m *UserMutation) ReviewsID() (id uuid.UUID, exists bool) {
+	if m.reviews != nil {
+		return *m.reviews, true
+	}
+	return
+}
+
+// ReviewsIDs returns the "reviews" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ReviewsID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) ReviewsIDs() (ids []uuid.UUID) {
+	if id := m.reviews; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetReviews resets all changes to the "reviews" edge.
+func (m *UserMutation) ResetReviews() {
+	m.reviews = nil
+	m.clearedreviews = false
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -1720,19 +1846,28 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.reviews != nil {
+		edges = append(edges, user.EdgeReviews)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *UserMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case user.EdgeReviews:
+		if id := m.reviews; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -1744,24 +1879,41 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedreviews {
+		edges = append(edges, user.EdgeReviews)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *UserMutation) EdgeCleared(name string) bool {
+	switch name {
+	case user.EdgeReviews:
+		return m.clearedreviews
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
+	switch name {
+	case user.EdgeReviews:
+		m.ClearReviews()
+		return nil
+	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *UserMutation) ResetEdge(name string) error {
+	switch name {
+	case user.EdgeReviews:
+		m.ResetReviews()
+		return nil
+	}
 	return fmt.Errorf("unknown User edge %s", name)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -24,8 +25,17 @@ const (
 	FieldPasswordHash = "password_hash"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeReviews holds the string denoting the reviews edge name in mutations.
+	EdgeReviews = "reviews"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// ReviewsTable is the table that holds the reviews relation/edge.
+	ReviewsTable = "users"
+	// ReviewsInverseTable is the table name for the Review entity.
+	// It exists in this package in order to avoid circular dependency with the "review" package.
+	ReviewsInverseTable = "reviews"
+	// ReviewsColumn is the table column denoting the reviews relation/edge.
+	ReviewsColumn = "review_user"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -38,10 +48,21 @@ var Columns = []string{
 	FieldCreatedAt,
 }
 
+// ForeignKeys holds the SQL foreign-keys that are owned by the "users"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"review_user",
+}
+
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -88,4 +109,18 @@ func ByPasswordHash(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByReviewsField orders the results by reviews field.
+func ByReviewsField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReviewsStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newReviewsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReviewsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, true, ReviewsTable, ReviewsColumn),
+	)
 }

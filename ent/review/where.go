@@ -7,6 +7,7 @@ import (
 	"tools-back/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -55,16 +56,6 @@ func IDLTE(id uuid.UUID) predicate.Review {
 	return predicate.Review(sql.FieldLTE(FieldID, id))
 }
 
-// UserUUID applies equality check predicate on the "user_uuid" field. It's identical to UserUUIDEQ.
-func UserUUID(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldUserUUID, v))
-}
-
-// ToolUUID applies equality check predicate on the "tool_uuid" field. It's identical to ToolUUIDEQ.
-func ToolUUID(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldToolUUID, v))
-}
-
 // Rating applies equality check predicate on the "rating" field. It's identical to RatingEQ.
 func Rating(v int) predicate.Review {
 	return predicate.Review(sql.FieldEQ(FieldRating, v))
@@ -78,86 +69,6 @@ func Comment(v string) predicate.Review {
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Review {
 	return predicate.Review(sql.FieldEQ(FieldCreatedAt, v))
-}
-
-// UserUUIDEQ applies the EQ predicate on the "user_uuid" field.
-func UserUUIDEQ(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldUserUUID, v))
-}
-
-// UserUUIDNEQ applies the NEQ predicate on the "user_uuid" field.
-func UserUUIDNEQ(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldNEQ(FieldUserUUID, v))
-}
-
-// UserUUIDIn applies the In predicate on the "user_uuid" field.
-func UserUUIDIn(vs ...uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldIn(FieldUserUUID, vs...))
-}
-
-// UserUUIDNotIn applies the NotIn predicate on the "user_uuid" field.
-func UserUUIDNotIn(vs ...uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldNotIn(FieldUserUUID, vs...))
-}
-
-// UserUUIDGT applies the GT predicate on the "user_uuid" field.
-func UserUUIDGT(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldGT(FieldUserUUID, v))
-}
-
-// UserUUIDGTE applies the GTE predicate on the "user_uuid" field.
-func UserUUIDGTE(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldGTE(FieldUserUUID, v))
-}
-
-// UserUUIDLT applies the LT predicate on the "user_uuid" field.
-func UserUUIDLT(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldLT(FieldUserUUID, v))
-}
-
-// UserUUIDLTE applies the LTE predicate on the "user_uuid" field.
-func UserUUIDLTE(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldLTE(FieldUserUUID, v))
-}
-
-// ToolUUIDEQ applies the EQ predicate on the "tool_uuid" field.
-func ToolUUIDEQ(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldEQ(FieldToolUUID, v))
-}
-
-// ToolUUIDNEQ applies the NEQ predicate on the "tool_uuid" field.
-func ToolUUIDNEQ(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldNEQ(FieldToolUUID, v))
-}
-
-// ToolUUIDIn applies the In predicate on the "tool_uuid" field.
-func ToolUUIDIn(vs ...uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldIn(FieldToolUUID, vs...))
-}
-
-// ToolUUIDNotIn applies the NotIn predicate on the "tool_uuid" field.
-func ToolUUIDNotIn(vs ...uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldNotIn(FieldToolUUID, vs...))
-}
-
-// ToolUUIDGT applies the GT predicate on the "tool_uuid" field.
-func ToolUUIDGT(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldGT(FieldToolUUID, v))
-}
-
-// ToolUUIDGTE applies the GTE predicate on the "tool_uuid" field.
-func ToolUUIDGTE(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldGTE(FieldToolUUID, v))
-}
-
-// ToolUUIDLT applies the LT predicate on the "tool_uuid" field.
-func ToolUUIDLT(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldLT(FieldToolUUID, v))
-}
-
-// ToolUUIDLTE applies the LTE predicate on the "tool_uuid" field.
-func ToolUUIDLTE(v uuid.UUID) predicate.Review {
-	return predicate.Review(sql.FieldLTE(FieldToolUUID, v))
 }
 
 // RatingEQ applies the EQ predicate on the "rating" field.
@@ -303,6 +214,52 @@ func CreatedAtLT(v time.Time) predicate.Review {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Review {
 	return predicate.Review(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// HasUser applies the HasEdge predicate on the "user" edge.
+func HasUser() predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, UserTable, UserColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
+func HasUserWith(preds ...predicate.User) predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := newUserStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasTool applies the HasEdge predicate on the "tool" edge.
+func HasTool() predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, ToolTable, ToolColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasToolWith applies the HasEdge predicate on the "tool" edge with a given conditions (other predicates).
+func HasToolWith(preds ...predicate.Tool) predicate.Review {
+	return predicate.Review(func(s *sql.Selector) {
+		step := newToolStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

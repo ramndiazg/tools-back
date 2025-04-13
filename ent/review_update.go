@@ -9,6 +9,8 @@ import (
 	"time"
 	"tools-back/ent/predicate"
 	"tools-back/ent/review"
+	"tools-back/ent/tool"
+	"tools-back/ent/user"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -26,34 +28,6 @@ type ReviewUpdate struct {
 // Where appends a list predicates to the ReviewUpdate builder.
 func (ru *ReviewUpdate) Where(ps ...predicate.Review) *ReviewUpdate {
 	ru.mutation.Where(ps...)
-	return ru
-}
-
-// SetUserUUID sets the "user_uuid" field.
-func (ru *ReviewUpdate) SetUserUUID(u uuid.UUID) *ReviewUpdate {
-	ru.mutation.SetUserUUID(u)
-	return ru
-}
-
-// SetNillableUserUUID sets the "user_uuid" field if the given value is not nil.
-func (ru *ReviewUpdate) SetNillableUserUUID(u *uuid.UUID) *ReviewUpdate {
-	if u != nil {
-		ru.SetUserUUID(*u)
-	}
-	return ru
-}
-
-// SetToolUUID sets the "tool_uuid" field.
-func (ru *ReviewUpdate) SetToolUUID(u uuid.UUID) *ReviewUpdate {
-	ru.mutation.SetToolUUID(u)
-	return ru
-}
-
-// SetNillableToolUUID sets the "tool_uuid" field if the given value is not nil.
-func (ru *ReviewUpdate) SetNillableToolUUID(u *uuid.UUID) *ReviewUpdate {
-	if u != nil {
-		ru.SetToolUUID(*u)
-	}
 	return ru
 }
 
@@ -106,9 +80,43 @@ func (ru *ReviewUpdate) SetNillableCreatedAt(t *time.Time) *ReviewUpdate {
 	return ru
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (ru *ReviewUpdate) SetUserID(id uuid.UUID) *ReviewUpdate {
+	ru.mutation.SetUserID(id)
+	return ru
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (ru *ReviewUpdate) SetUser(u *User) *ReviewUpdate {
+	return ru.SetUserID(u.ID)
+}
+
+// SetToolID sets the "tool" edge to the Tool entity by ID.
+func (ru *ReviewUpdate) SetToolID(id uuid.UUID) *ReviewUpdate {
+	ru.mutation.SetToolID(id)
+	return ru
+}
+
+// SetTool sets the "tool" edge to the Tool entity.
+func (ru *ReviewUpdate) SetTool(t *Tool) *ReviewUpdate {
+	return ru.SetToolID(t.ID)
+}
+
 // Mutation returns the ReviewMutation object of the builder.
 func (ru *ReviewUpdate) Mutation() *ReviewMutation {
 	return ru.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (ru *ReviewUpdate) ClearUser() *ReviewUpdate {
+	ru.mutation.ClearUser()
+	return ru
+}
+
+// ClearTool clears the "tool" edge to the Tool entity.
+func (ru *ReviewUpdate) ClearTool() *ReviewUpdate {
+	ru.mutation.ClearTool()
+	return ru
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -138,7 +146,21 @@ func (ru *ReviewUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (ru *ReviewUpdate) check() error {
+	if ru.mutation.UserCleared() && len(ru.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.user"`)
+	}
+	if ru.mutation.ToolCleared() && len(ru.mutation.ToolIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.tool"`)
+	}
+	return nil
+}
+
 func (ru *ReviewUpdate) sqlSave(ctx context.Context) (n int, err error) {
+	if err := ru.check(); err != nil {
+		return n, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(review.Table, review.Columns, sqlgraph.NewFieldSpec(review.FieldID, field.TypeUUID))
 	if ps := ru.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -146,12 +168,6 @@ func (ru *ReviewUpdate) sqlSave(ctx context.Context) (n int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := ru.mutation.UserUUID(); ok {
-		_spec.SetField(review.FieldUserUUID, field.TypeUUID, value)
-	}
-	if value, ok := ru.mutation.ToolUUID(); ok {
-		_spec.SetField(review.FieldToolUUID, field.TypeUUID, value)
 	}
 	if value, ok := ru.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
@@ -164,6 +180,64 @@ func (ru *ReviewUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := ru.mutation.CreatedAt(); ok {
 		_spec.SetField(review.FieldCreatedAt, field.TypeTime, value)
+	}
+	if ru.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ru.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if ru.mutation.ToolCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.ToolTable,
+			Columns: []string{review.ToolColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ru.mutation.ToolIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.ToolTable,
+			Columns: []string{review.ToolColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, ru.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -183,34 +257,6 @@ type ReviewUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *ReviewMutation
-}
-
-// SetUserUUID sets the "user_uuid" field.
-func (ruo *ReviewUpdateOne) SetUserUUID(u uuid.UUID) *ReviewUpdateOne {
-	ruo.mutation.SetUserUUID(u)
-	return ruo
-}
-
-// SetNillableUserUUID sets the "user_uuid" field if the given value is not nil.
-func (ruo *ReviewUpdateOne) SetNillableUserUUID(u *uuid.UUID) *ReviewUpdateOne {
-	if u != nil {
-		ruo.SetUserUUID(*u)
-	}
-	return ruo
-}
-
-// SetToolUUID sets the "tool_uuid" field.
-func (ruo *ReviewUpdateOne) SetToolUUID(u uuid.UUID) *ReviewUpdateOne {
-	ruo.mutation.SetToolUUID(u)
-	return ruo
-}
-
-// SetNillableToolUUID sets the "tool_uuid" field if the given value is not nil.
-func (ruo *ReviewUpdateOne) SetNillableToolUUID(u *uuid.UUID) *ReviewUpdateOne {
-	if u != nil {
-		ruo.SetToolUUID(*u)
-	}
-	return ruo
 }
 
 // SetRating sets the "rating" field.
@@ -262,9 +308,43 @@ func (ruo *ReviewUpdateOne) SetNillableCreatedAt(t *time.Time) *ReviewUpdateOne 
 	return ruo
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (ruo *ReviewUpdateOne) SetUserID(id uuid.UUID) *ReviewUpdateOne {
+	ruo.mutation.SetUserID(id)
+	return ruo
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (ruo *ReviewUpdateOne) SetUser(u *User) *ReviewUpdateOne {
+	return ruo.SetUserID(u.ID)
+}
+
+// SetToolID sets the "tool" edge to the Tool entity by ID.
+func (ruo *ReviewUpdateOne) SetToolID(id uuid.UUID) *ReviewUpdateOne {
+	ruo.mutation.SetToolID(id)
+	return ruo
+}
+
+// SetTool sets the "tool" edge to the Tool entity.
+func (ruo *ReviewUpdateOne) SetTool(t *Tool) *ReviewUpdateOne {
+	return ruo.SetToolID(t.ID)
+}
+
 // Mutation returns the ReviewMutation object of the builder.
 func (ruo *ReviewUpdateOne) Mutation() *ReviewMutation {
 	return ruo.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (ruo *ReviewUpdateOne) ClearUser() *ReviewUpdateOne {
+	ruo.mutation.ClearUser()
+	return ruo
+}
+
+// ClearTool clears the "tool" edge to the Tool entity.
+func (ruo *ReviewUpdateOne) ClearTool() *ReviewUpdateOne {
+	ruo.mutation.ClearTool()
+	return ruo
 }
 
 // Where appends a list predicates to the ReviewUpdate builder.
@@ -307,7 +387,21 @@ func (ruo *ReviewUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (ruo *ReviewUpdateOne) check() error {
+	if ruo.mutation.UserCleared() && len(ruo.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.user"`)
+	}
+	if ruo.mutation.ToolCleared() && len(ruo.mutation.ToolIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Review.tool"`)
+	}
+	return nil
+}
+
 func (ruo *ReviewUpdateOne) sqlSave(ctx context.Context) (_node *Review, err error) {
+	if err := ruo.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(review.Table, review.Columns, sqlgraph.NewFieldSpec(review.FieldID, field.TypeUUID))
 	id, ok := ruo.mutation.ID()
 	if !ok {
@@ -333,12 +427,6 @@ func (ruo *ReviewUpdateOne) sqlSave(ctx context.Context) (_node *Review, err err
 			}
 		}
 	}
-	if value, ok := ruo.mutation.UserUUID(); ok {
-		_spec.SetField(review.FieldUserUUID, field.TypeUUID, value)
-	}
-	if value, ok := ruo.mutation.ToolUUID(); ok {
-		_spec.SetField(review.FieldToolUUID, field.TypeUUID, value)
-	}
 	if value, ok := ruo.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
 	}
@@ -350,6 +438,64 @@ func (ruo *ReviewUpdateOne) sqlSave(ctx context.Context) (_node *Review, err err
 	}
 	if value, ok := ruo.mutation.CreatedAt(); ok {
 		_spec.SetField(review.FieldCreatedAt, field.TypeTime, value)
+	}
+	if ruo.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ruo.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if ruo.mutation.ToolCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.ToolTable,
+			Columns: []string{review.ToolColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := ruo.mutation.ToolIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.ToolTable,
+			Columns: []string{review.ToolColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Review{config: ruo.config}
 	_spec.Assign = _node.assignValues

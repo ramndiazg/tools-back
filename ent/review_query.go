@@ -4,10 +4,13 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"tools-back/ent/predicate"
 	"tools-back/ent/review"
+	"tools-back/ent/tool"
+	"tools-back/ent/user"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -23,6 +26,8 @@ type ReviewQuery struct {
 	order      []review.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Review
+	withUser   *UserQuery
+	withTool   *ToolQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +62,50 @@ func (rq *ReviewQuery) Unique(unique bool) *ReviewQuery {
 func (rq *ReviewQuery) Order(o ...review.OrderOption) *ReviewQuery {
 	rq.order = append(rq.order, o...)
 	return rq
+}
+
+// QueryUser chains the current query on the "user" edge.
+func (rq *ReviewQuery) QueryUser() *UserQuery {
+	query := (&UserClient{config: rq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := rq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := rq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(review.Table, review.FieldID, selector),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, review.UserTable, review.UserColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTool chains the current query on the "tool" edge.
+func (rq *ReviewQuery) QueryTool() *ToolQuery {
+	query := (&ToolClient{config: rq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := rq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := rq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(review.Table, review.FieldID, selector),
+			sqlgraph.To(tool.Table, tool.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, review.ToolTable, review.ToolColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(rq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Review entity from the query.
@@ -251,10 +300,34 @@ func (rq *ReviewQuery) Clone() *ReviewQuery {
 		order:      append([]review.OrderOption{}, rq.order...),
 		inters:     append([]Interceptor{}, rq.inters...),
 		predicates: append([]predicate.Review{}, rq.predicates...),
+		withUser:   rq.withUser.Clone(),
+		withTool:   rq.withTool.Clone(),
 		// clone intermediate query.
 		sql:  rq.sql.Clone(),
 		path: rq.path,
 	}
+}
+
+// WithUser tells the query-builder to eager-load the nodes that are connected to
+// the "user" edge. The optional arguments are used to configure the query builder of the edge.
+func (rq *ReviewQuery) WithUser(opts ...func(*UserQuery)) *ReviewQuery {
+	query := (&UserClient{config: rq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	rq.withUser = query
+	return rq
+}
+
+// WithTool tells the query-builder to eager-load the nodes that are connected to
+// the "tool" edge. The optional arguments are used to configure the query builder of the edge.
+func (rq *ReviewQuery) WithTool(opts ...func(*ToolQuery)) *ReviewQuery {
+	query := (&ToolClient{config: rq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	rq.withTool = query
+	return rq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -263,12 +336,12 @@ func (rq *ReviewQuery) Clone() *ReviewQuery {
 // Example:
 //
 //	var v []struct {
-//		UserUUID uuid.UUID `json:"user_uuid,omitempty"`
+//		Rating int `json:"rating,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Review.Query().
-//		GroupBy(review.FieldUserUUID).
+//		GroupBy(review.FieldRating).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (rq *ReviewQuery) GroupBy(field string, fields ...string) *ReviewGroupBy {
@@ -286,11 +359,11 @@ func (rq *ReviewQuery) GroupBy(field string, fields ...string) *ReviewGroupBy {
 // Example:
 //
 //	var v []struct {
-//		UserUUID uuid.UUID `json:"user_uuid,omitempty"`
+//		Rating int `json:"rating,omitempty"`
 //	}
 //
 //	client.Review.Query().
-//		Select(review.FieldUserUUID).
+//		Select(review.FieldRating).
 //		Scan(ctx, &v)
 func (rq *ReviewQuery) Select(fields ...string) *ReviewSelect {
 	rq.ctx.Fields = append(rq.ctx.Fields, fields...)
@@ -333,8 +406,12 @@ func (rq *ReviewQuery) prepareQuery(ctx context.Context) error {
 
 func (rq *ReviewQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Review, error) {
 	var (
-		nodes = []*Review{}
-		_spec = rq.querySpec()
+		nodes       = []*Review{}
+		_spec       = rq.querySpec()
+		loadedTypes = [2]bool{
+			rq.withUser != nil,
+			rq.withTool != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Review).scanValues(nil, columns)
@@ -342,6 +419,7 @@ func (rq *ReviewQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Revie
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Review{config: rq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +431,76 @@ func (rq *ReviewQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Revie
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := rq.withUser; query != nil {
+		if err := rq.loadUser(ctx, query, nodes, nil,
+			func(n *Review, e *User) { n.Edges.User = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := rq.withTool; query != nil {
+		if err := rq.loadTool(ctx, query, nodes, nil,
+			func(n *Review, e *Tool) { n.Edges.Tool = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (rq *ReviewQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Review, init func(*Review), assign func(*Review, *User)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Review)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	query.withFKs = true
+	query.Where(predicate.User(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(review.UserColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.review_user
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "review_user" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "review_user" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (rq *ReviewQuery) loadTool(ctx context.Context, query *ToolQuery, nodes []*Review, init func(*Review), assign func(*Review, *Tool)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Review)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	query.withFKs = true
+	query.Where(predicate.Tool(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(review.ToolColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.review_tool
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "review_tool" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "review_tool" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
 }
 
 func (rq *ReviewQuery) sqlCount(ctx context.Context) (int, error) {

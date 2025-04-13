@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"tools-back/ent/review"
 	"tools-back/ent/tool"
 
 	"entgo.io/ent"
@@ -29,8 +30,32 @@ type Tool struct {
 	// ImageURL holds the value of the "image_url" field.
 	ImageURL string `json:"image_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ToolQuery when eager-loading is set.
+	Edges        ToolEdges `json:"edges"`
+	review_tool  *uuid.UUID
 	selectValues sql.SelectValues
+}
+
+// ToolEdges holds the relations/edges for other nodes in the graph.
+type ToolEdges struct {
+	// Reviews holds the value of the reviews edge.
+	Reviews *Review `json:"reviews,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// ReviewsOrErr returns the Reviews value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ToolEdges) ReviewsOrErr() (*Review, error) {
+	if e.Reviews != nil {
+		return e.Reviews, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: review.Label}
+	}
+	return nil, &NotLoadedError{edge: "reviews"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -44,6 +69,8 @@ func (*Tool) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case tool.FieldID:
 			values[i] = new(uuid.UUID)
+		case tool.ForeignKeys[0]: // review_tool
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -101,6 +128,13 @@ func (t *Tool) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				t.CreatedAt = value.Time
 			}
+		case tool.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field review_tool", values[i])
+			} else if value.Valid {
+				t.review_tool = new(uuid.UUID)
+				*t.review_tool = *value.S.(*uuid.UUID)
+			}
 		default:
 			t.selectValues.Set(columns[i], values[i])
 		}
@@ -112,6 +146,11 @@ func (t *Tool) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (t *Tool) Value(name string) (ent.Value, error) {
 	return t.selectValues.Get(name)
+}
+
+// QueryReviews queries the "reviews" edge of the Tool entity.
+func (t *Tool) QueryReviews() *ReviewQuery {
+	return NewToolClient(t.config).QueryReviews(t)
 }
 
 // Update returns a builder for updating this Tool.

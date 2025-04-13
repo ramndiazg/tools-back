@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"tools-back/ent/review"
 	"tools-back/ent/tool"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -85,6 +86,25 @@ func (tc *ToolCreate) SetNillableID(u *uuid.UUID) *ToolCreate {
 		tc.SetID(*u)
 	}
 	return tc
+}
+
+// SetReviewsID sets the "reviews" edge to the Review entity by ID.
+func (tc *ToolCreate) SetReviewsID(id uuid.UUID) *ToolCreate {
+	tc.mutation.SetReviewsID(id)
+	return tc
+}
+
+// SetNillableReviewsID sets the "reviews" edge to the Review entity by ID if the given value is not nil.
+func (tc *ToolCreate) SetNillableReviewsID(id *uuid.UUID) *ToolCreate {
+	if id != nil {
+		tc = tc.SetReviewsID(*id)
+	}
+	return tc
+}
+
+// SetReviews sets the "reviews" edge to the Review entity.
+func (tc *ToolCreate) SetReviews(r *Review) *ToolCreate {
+	return tc.SetReviewsID(r.ID)
 }
 
 // Mutation returns the ToolMutation object of the builder.
@@ -214,6 +234,23 @@ func (tc *ToolCreate) createSpec() (*Tool, *sqlgraph.CreateSpec) {
 	if value, ok := tc.mutation.CreatedAt(); ok {
 		_spec.SetField(tool.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := tc.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   tool.ReviewsTable,
+			Columns: []string{tool.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(review.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.review_tool = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

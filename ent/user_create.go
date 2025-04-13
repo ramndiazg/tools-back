@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"tools-back/ent/review"
 	"tools-back/ent/user"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -79,6 +80,25 @@ func (uc *UserCreate) SetNillableID(u *uuid.UUID) *UserCreate {
 		uc.SetID(*u)
 	}
 	return uc
+}
+
+// SetReviewsID sets the "reviews" edge to the Review entity by ID.
+func (uc *UserCreate) SetReviewsID(id uuid.UUID) *UserCreate {
+	uc.mutation.SetReviewsID(id)
+	return uc
+}
+
+// SetNillableReviewsID sets the "reviews" edge to the Review entity by ID if the given value is not nil.
+func (uc *UserCreate) SetNillableReviewsID(id *uuid.UUID) *UserCreate {
+	if id != nil {
+		uc = uc.SetReviewsID(*id)
+	}
+	return uc
+}
+
+// SetReviews sets the "reviews" edge to the Review entity.
+func (uc *UserCreate) SetReviews(r *Review) *UserCreate {
+	return uc.SetReviewsID(r.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -201,6 +221,23 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := uc.mutation.ReviewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   user.ReviewsTable,
+			Columns: []string{user.ReviewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(review.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.review_user = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

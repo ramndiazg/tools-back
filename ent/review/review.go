@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -14,25 +15,37 @@ const (
 	Label = "review"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldUserUUID holds the string denoting the user_uuid field in the database.
-	FieldUserUUID = "user_uuid"
-	// FieldToolUUID holds the string denoting the tool_uuid field in the database.
-	FieldToolUUID = "tool_uuid"
 	// FieldRating holds the string denoting the rating field in the database.
 	FieldRating = "rating"
 	// FieldComment holds the string denoting the comment field in the database.
 	FieldComment = "comment"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeUser holds the string denoting the user edge name in mutations.
+	EdgeUser = "user"
+	// EdgeTool holds the string denoting the tool edge name in mutations.
+	EdgeTool = "tool"
 	// Table holds the table name of the review in the database.
 	Table = "reviews"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "users"
+	// UserInverseTable is the table name for the User entity.
+	// It exists in this package in order to avoid circular dependency with the "user" package.
+	UserInverseTable = "users"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "review_user"
+	// ToolTable is the table that holds the tool relation/edge.
+	ToolTable = "tools"
+	// ToolInverseTable is the table name for the Tool entity.
+	// It exists in this package in order to avoid circular dependency with the "tool" package.
+	ToolInverseTable = "tools"
+	// ToolColumn is the table column denoting the tool relation/edge.
+	ToolColumn = "review_tool"
 )
 
 // Columns holds all SQL columns for review fields.
 var Columns = []string{
 	FieldID,
-	FieldUserUUID,
-	FieldToolUUID,
 	FieldRating,
 	FieldComment,
 	FieldCreatedAt,
@@ -63,16 +76,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByUserUUID orders the results by the user_uuid field.
-func ByUserUUID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUserUUID, opts...).ToFunc()
-}
-
-// ByToolUUID orders the results by the tool_uuid field.
-func ByToolUUID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldToolUUID, opts...).ToFunc()
-}
-
 // ByRating orders the results by the rating field.
 func ByRating(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRating, opts...).ToFunc()
@@ -86,4 +89,32 @@ func ByComment(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUserField orders the results by user field.
+func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByToolField orders the results by tool field.
+func ByToolField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newToolStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newUserStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(UserInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, UserTable, UserColumn),
+	)
+}
+func newToolStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ToolInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, ToolTable, ToolColumn),
+	)
 }

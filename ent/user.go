@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"tools-back/ent/review"
 	"tools-back/ent/user"
 
 	"entgo.io/ent"
@@ -27,8 +28,32 @@ type User struct {
 	// PasswordHash holds the value of the "password_hash" field.
 	PasswordHash string `json:"password_hash,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
+	review_user  *uuid.UUID
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Reviews holds the value of the reviews edge.
+	Reviews *Review `json:"reviews,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// ReviewsOrErr returns the Reviews value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) ReviewsOrErr() (*Review, error) {
+	if e.Reviews != nil {
+		return e.Reviews, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: review.Label}
+	}
+	return nil, &NotLoadedError{edge: "reviews"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -42,6 +67,8 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullTime)
 		case user.FieldID:
 			values[i] = new(uuid.UUID)
+		case user.ForeignKeys[0]: // review_user
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -93,6 +120,13 @@ func (u *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				u.CreatedAt = value.Time
 			}
+		case user.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field review_user", values[i])
+			} else if value.Valid {
+				u.review_user = new(uuid.UUID)
+				*u.review_user = *value.S.(*uuid.UUID)
+			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
 		}
@@ -104,6 +138,11 @@ func (u *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (u *User) Value(name string) (ent.Value, error) {
 	return u.selectValues.Get(name)
+}
+
+// QueryReviews queries the "reviews" edge of the User entity.
+func (u *User) QueryReviews() *ReviewQuery {
+	return NewUserClient(u.config).QueryReviews(u)
 }
 
 // Update returns a builder for updating this User.

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 	"tools-back/ent/review"
+	"tools-back/ent/tool"
+	"tools-back/ent/user"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -19,18 +21,6 @@ type ReviewCreate struct {
 	config
 	mutation *ReviewMutation
 	hooks    []Hook
-}
-
-// SetUserUUID sets the "user_uuid" field.
-func (rc *ReviewCreate) SetUserUUID(u uuid.UUID) *ReviewCreate {
-	rc.mutation.SetUserUUID(u)
-	return rc
-}
-
-// SetToolUUID sets the "tool_uuid" field.
-func (rc *ReviewCreate) SetToolUUID(u uuid.UUID) *ReviewCreate {
-	rc.mutation.SetToolUUID(u)
-	return rc
 }
 
 // SetRating sets the "rating" field.
@@ -71,6 +61,28 @@ func (rc *ReviewCreate) SetNillableID(u *uuid.UUID) *ReviewCreate {
 		rc.SetID(*u)
 	}
 	return rc
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (rc *ReviewCreate) SetUserID(id uuid.UUID) *ReviewCreate {
+	rc.mutation.SetUserID(id)
+	return rc
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (rc *ReviewCreate) SetUser(u *User) *ReviewCreate {
+	return rc.SetUserID(u.ID)
+}
+
+// SetToolID sets the "tool" edge to the Tool entity by ID.
+func (rc *ReviewCreate) SetToolID(id uuid.UUID) *ReviewCreate {
+	rc.mutation.SetToolID(id)
+	return rc
+}
+
+// SetTool sets the "tool" edge to the Tool entity.
+func (rc *ReviewCreate) SetTool(t *Tool) *ReviewCreate {
+	return rc.SetToolID(t.ID)
 }
 
 // Mutation returns the ReviewMutation object of the builder.
@@ -120,12 +132,6 @@ func (rc *ReviewCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (rc *ReviewCreate) check() error {
-	if _, ok := rc.mutation.UserUUID(); !ok {
-		return &ValidationError{Name: "user_uuid", err: errors.New(`ent: missing required field "Review.user_uuid"`)}
-	}
-	if _, ok := rc.mutation.ToolUUID(); !ok {
-		return &ValidationError{Name: "tool_uuid", err: errors.New(`ent: missing required field "Review.tool_uuid"`)}
-	}
 	if _, ok := rc.mutation.Rating(); !ok {
 		return &ValidationError{Name: "rating", err: errors.New(`ent: missing required field "Review.rating"`)}
 	}
@@ -134,6 +140,12 @@ func (rc *ReviewCreate) check() error {
 	}
 	if _, ok := rc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Review.created_at"`)}
+	}
+	if len(rc.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Review.user"`)}
+	}
+	if len(rc.mutation.ToolIDs()) == 0 {
+		return &ValidationError{Name: "tool", err: errors.New(`ent: missing required edge "Review.tool"`)}
 	}
 	return nil
 }
@@ -170,14 +182,6 @@ func (rc *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := rc.mutation.UserUUID(); ok {
-		_spec.SetField(review.FieldUserUUID, field.TypeUUID, value)
-		_node.UserUUID = value
-	}
-	if value, ok := rc.mutation.ToolUUID(); ok {
-		_spec.SetField(review.FieldToolUUID, field.TypeUUID, value)
-		_node.ToolUUID = value
-	}
 	if value, ok := rc.mutation.Rating(); ok {
 		_spec.SetField(review.FieldRating, field.TypeInt, value)
 		_node.Rating = value
@@ -189,6 +193,38 @@ func (rc *ReviewCreate) createSpec() (*Review, *sqlgraph.CreateSpec) {
 	if value, ok := rc.mutation.CreatedAt(); ok {
 		_spec.SetField(review.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := rc.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.UserTable,
+			Columns: []string{review.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := rc.mutation.ToolIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   review.ToolTable,
+			Columns: []string{review.ToolColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

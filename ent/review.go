@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 	"tools-back/ent/review"
+	"tools-back/ent/tool"
+	"tools-back/ent/user"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -18,17 +20,49 @@ type Review struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// UserUUID holds the value of the "user_uuid" field.
-	UserUUID uuid.UUID `json:"user_uuid,omitempty"`
-	// ToolUUID holds the value of the "tool_uuid" field.
-	ToolUUID uuid.UUID `json:"tool_uuid,omitempty"`
 	// Rating holds the value of the "rating" field.
 	Rating int `json:"rating,omitempty"`
 	// Comment holds the value of the "comment" field.
 	Comment string `json:"comment,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ReviewQuery when eager-loading is set.
+	Edges        ReviewEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// ReviewEdges holds the relations/edges for other nodes in the graph.
+type ReviewEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// Tool holds the value of the tool edge.
+	Tool *Tool `json:"tool,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ReviewEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
+}
+
+// ToolOrErr returns the Tool value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ReviewEdges) ToolOrErr() (*Tool, error) {
+	if e.Tool != nil {
+		return e.Tool, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: tool.Label}
+	}
+	return nil, &NotLoadedError{edge: "tool"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -42,7 +76,7 @@ func (*Review) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case review.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case review.FieldID, review.FieldUserUUID, review.FieldToolUUID:
+		case review.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -64,18 +98,6 @@ func (r *Review) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				r.ID = *value
-			}
-		case review.FieldUserUUID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field user_uuid", values[i])
-			} else if value != nil {
-				r.UserUUID = *value
-			}
-		case review.FieldToolUUID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field tool_uuid", values[i])
-			} else if value != nil {
-				r.ToolUUID = *value
 			}
 		case review.FieldRating:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -108,6 +130,16 @@ func (r *Review) Value(name string) (ent.Value, error) {
 	return r.selectValues.Get(name)
 }
 
+// QueryUser queries the "user" edge of the Review entity.
+func (r *Review) QueryUser() *UserQuery {
+	return NewReviewClient(r.config).QueryUser(r)
+}
+
+// QueryTool queries the "tool" edge of the Review entity.
+func (r *Review) QueryTool() *ToolQuery {
+	return NewReviewClient(r.config).QueryTool(r)
+}
+
 // Update returns a builder for updating this Review.
 // Note that you need to call Review.Unwrap() before calling this method if this Review
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -131,12 +163,6 @@ func (r *Review) String() string {
 	var builder strings.Builder
 	builder.WriteString("Review(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", r.ID))
-	builder.WriteString("user_uuid=")
-	builder.WriteString(fmt.Sprintf("%v", r.UserUUID))
-	builder.WriteString(", ")
-	builder.WriteString("tool_uuid=")
-	builder.WriteString(fmt.Sprintf("%v", r.ToolUUID))
-	builder.WriteString(", ")
 	builder.WriteString("rating=")
 	builder.WriteString(fmt.Sprintf("%v", r.Rating))
 	builder.WriteString(", ")

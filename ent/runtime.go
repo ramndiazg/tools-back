@@ -19,7 +19,7 @@ func init() {
 	reviewFields := schema.Review{}.Fields()
 	_ = reviewFields
 	// reviewDescCreatedAt is the schema descriptor for created_at field.
-	reviewDescCreatedAt := reviewFields[5].Descriptor()
+	reviewDescCreatedAt := reviewFields[3].Descriptor()
 	// review.DefaultCreatedAt holds the default value on creation for the created_at field.
 	review.DefaultCreatedAt = reviewDescCreatedAt.Default.(func() time.Time)
 	// reviewDescID is the schema descriptor for id field.

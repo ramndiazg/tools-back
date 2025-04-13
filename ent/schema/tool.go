@@ -2,9 +2,10 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 	"time"
+	"github.com/google/uuid"
 )
 
 // Tool holds the schema definition for the Tool entity.
@@ -27,5 +28,9 @@ func (Tool) Fields() []ent.Field {
 
 // Edges of the Tool.
 func (Tool) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.From("reviews", Review.Type).
+			Ref("tool").
+			Unique(),
+	}
 }

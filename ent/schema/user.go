@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/edge"
 	"github.com/google/uuid"
 	"time"
 )
@@ -26,5 +27,9 @@ func (User) Fields() []ent.Field {
 
 // Edges of the User.
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.From("reviews", Review.Type).
+			Ref("user").
+			Unique(),
+	}
 }
